@@ -2,3 +2,6 @@
 .mbed
 projectfiles
 *.py*
+BUILD
+mbed-os
+vl53l0x-mbed
