@@ -10,13 +10,30 @@
 Timer sensor_timer;
 Timer led_timer;
 
+bool afgrond = false;
+bool zwarte_lijn = false;
+
+// VL53L0X ToF Afstandssensor
 I2C i2c(PA_8, PA_9);
 VL53L0X sensor(i2c, sensor_timer);
+
+// IR-sensoren voor afgrond detectie
+DigitalIn ir1(D4);
+DigitalIn ir2(D4);
+DigitalIn ir3(D4);
+DigitalIn ir4(D4);
+
+// IR-sensoren voor zwarte lijn detectie
+DigitalIn ir5(D4);
+DigitalIn ir6(D4);
+DigitalIn ir7(D4);
+DigitalIn ir8(D4);
 
 PwmOut led1(D3);
 PwmOut led2(D5);
 PwmOut led3(D6);
 AnalogIn potmeter(A0);
+
 void object_detectie()
 {
     int distance = sensor.readRangeSingleMillimeters();
@@ -28,6 +45,30 @@ void object_detectie()
     {
         printf("Afstand is: %d\n", distance);
     }
+}
+
+void afgrond_detectie()
+{
+    if (ir1.read() || ir2.read() || ir3.read() || ir4.read() == 1)
+    {
+        afgrond = true;
+    }
+    else 
+    {
+        afgrond = false;
+    }
+}
+
+void zwarte_lijn_detectie()
+{
+    if (ir5.read() || ir6.read() || ir7.read() || ir8.read() == 1)
+    {
+        zwarte_lijn = true;
+    }
+    else 
+    {
+        zwarte_lijn = false;
+    } 
 }
 
 void update_leds()
