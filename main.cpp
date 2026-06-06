@@ -1,168 +1,3 @@
-
-// #include "mbed.h"
-// #include "VL53L0X.h"
-
-// #define HIGH_ACCURACY
-
-// // ── Timers ────────────────────────────────────────────────────────
-// Timer sensor_timer;
-// Timer led_timer;
-// Timer t1, t2, t3;
-
-// // ── Status flags ──────────────────────────────────────────────────
-// bool afgrond     = false;
-// bool zwarte_lijn = false;
-
-// // ── XSHUT pins ───────────────────────────────────────────────────
-// DigitalOut xshut1(D8);
-// DigitalOut xshut2(D9);
-// DigitalOut xshut3(D10);
-
-// // ── I2C bus + sensoren ───────────────────────────────────────────
-// I2C i2c(D14, D15);  // SDA, SCL
-// VL53L0X sensor1(i2c, t1);
-// VL53L0X sensor2(i2c, t2);
-// VL53L0X sensor3(i2c, t3);
-
-// #define ADDR_SENSOR1 0x30
-// #define ADDR_SENSOR2 0x31
-// #define ADDR_SENSOR3 0x32
-
-// // ── IR-sensoren afgrond ───────────────────────────────────────────
-// // TODO: vervang D4 door de echte pinnen
-// DigitalIn ir1(D4);
-// DigitalIn ir2(D4);
-// DigitalIn ir3(D4);
-// DigitalIn ir4(D4);
-
-// // ── IR-sensoren zwarte lijn ───────────────────────────────────────
-// // TODO: vervang D4 door de echte pinnen
-// DigitalIn ir5(D4);
-// DigitalIn ir6(D4);
-// DigitalIn ir7(D4);
-// DigitalIn ir8(D4);
-
-// // ── LEDs + potmeter ───────────────────────────────────────────────
-// PwmOut led1(D3);
-// PwmOut led2(D5);
-// PwmOut led3(D6);
-// AnalogIn potmeter(A0);
-
-// // ─────────────────────────────────────────────────────────────────
-
-// void init_sensors()
-// {
-//     // Zet alle sensoren in reset
-//     xshut1 = 0;
-//     xshut2 = 0;
-//     xshut3 = 0;
-//     ThisThread::sleep_for(10ms);
-
-//     // Sensor 1
-//     printf("Sensor1 wakker maken...\r\n");
-//     xshut1 = 1;
-//     ThisThread::sleep_for(10ms);
-//     t1.start();
-//     sensor1.init();
-//     sensor1.setAddress(ADDR_SENSOR1);
-//     sensor1.setTimeout(500);
-//     sensor1.setMeasurementTimingBudget(200000);
-//     printf("Sensor1 klaar op adres 0x%X\r\n", ADDR_SENSOR1);
-
-//     // Sensor 2
-//     printf("Sensor2 wakker maken...\r\n");
-//     xshut2 = 1;
-//     ThisThread::sleep_for(10ms);
-//     t2.start();
-//     sensor2.init();
-//     sensor2.setAddress(ADDR_SENSOR2);
-//     sensor2.setTimeout(500);
-//     sensor2.setMeasurementTimingBudget(200000);
-//     printf("Sensor2 klaar op adres 0x%X\r\n", ADDR_SENSOR2);
-
-//     // Sensor 3
-//     printf("Sensor3 wakker maken...\r\n");
-//     xshut3 = 1;
-//     ThisThread::sleep_for(10ms);
-//     t3.start();
-//     sensor3.init();
-//     sensor3.setAddress(ADDR_SENSOR3);
-//     sensor3.setTimeout(500);
-//     sensor3.setMeasurementTimingBudget(200000);
-//     printf("Sensor3 klaar op adres 0x%X\r\n", ADDR_SENSOR3);
-
-//     printf("Alle sensoren geinitieerd!\r\n");
-// }
-
-// void object_detectie(VL53L0X &sensor, const char* name)
-// {
-//     int distance = sensor.readRangeSingleMillimeters();
-//     if (sensor.timeoutOccurred())
-//         printf("[%s] TimeOut!\r\n", name);
-//     else
-//         printf("[%s] Afstand: %d mm\r\n", name, distance);
-// }
-
-// void afgrond_detectie()
-// {
-//     afgrond = (ir1.read() == 1) || (ir2.read() == 1) ||
-//               (ir3.read() == 1) || (ir4.read() == 1);
-// }
-
-// void zwarte_lijn_detectie()
-// {
-//     zwarte_lijn = (ir5.read() == 1) || (ir6.read() == 1) ||
-//                   (ir7.read() == 1) || (ir8.read() == 1);
-// }
-
-// void update_leds()
-// {
-//     float value = potmeter.read();
-//     led1.write(value);
-//     led2.write(value / 2.0f);
-//     led3.write(value / 2.0f);
-// }
-
-// int main()
-// {
-//     // LEDs initialiseren (period_ms VOOR write)
-//     led1.period_ms(1);
-//     led1.write(0.0f);
-//     led2.period_ms(1);
-//     led2.write(0.0f);
-//     led3.period_ms(1);
-//     led3.write(0.0f);
-
-//     potmeter.set_reference_voltage(3.3f);
-
-//     printf("Start, sensoren initieren...\r\n");
-//     init_sensors();
-//     printf("Initiatie compleet!\r\n");
-
-//     sensor_timer.start();
-//     led_timer.start();
-
-//     while (true)
-//     {
-//         if (led_timer.elapsed_time() >= 1000ms)
-//         {
-//             update_leds();
-//             led_timer.reset();
-//         }
-
-//         if (sensor_timer.elapsed_time() >= 500ms)
-//         {
-//             object_detectie(sensor1, "Sensor1");
-//             object_detectie(sensor2, "Sensor2");
-//             object_detectie(sensor3, "Sensor3");
-//             afgrond_detectie();
-//             zwarte_lijn_detectie();
-//             sensor_timer.reset();
-//         }
-//     }
-// }
-
-
 #include <mbed.h>
 #include <VL53L0X.h>
 
@@ -180,10 +15,10 @@ enum Richting
 };
 
 //Reset pins op VL53L0X ToF sensor
-DigitalOut xshut1(D2);
-DigitalOut xshut2(D3);
-DigitalOut xshut3(D4);
-DigitalOut xshut4(D5);
+DigitalOut xshut1(PC_6);
+DigitalOut xshut2(PC_8);
+DigitalOut xshut3(PB_1);
+DigitalOut xshut4(PC_0);
 
 // Default en nieuwe address
 #define DEFAULT_ADDR    0x29
@@ -202,24 +37,32 @@ VL53L0X sensorRF(i2c, t1);
 VL53L0X sensorR(i2c, t1);
 
 // ---- IR-sensoren afgrond ----
-DigitalIn ir1(D4);
-DigitalIn ir2(D4);
-DigitalIn ir3(D4);
-DigitalIn ir4(D4);
+DigitalIn ir1(D12);
+DigitalIn ir2(D13);
+DigitalIn ir3(A2);
+DigitalIn ir4(A3);
 
 // ---- IR-sensoren zwarte lijn ----
-DigitalIn ir5(D4);
-DigitalIn ir6(D4);
+DigitalIn ir5(A4);
+DigitalIn ir6(A5);
 
-//----RGB LEDS ----
-PwmOut ledL_rood(PA_0);
-PwmOut ledL_groen(PA_1);
-PwmOut ledLF_rood(PA_2);
-PwmOut ledLF_groen(PB_6);
-PwmOut ledRF_rood(PB_7);
-PwmOut ledRF_groen(PB_8);
-PwmOut ledR_rood(PB_9);
-PwmOut ledR_groen(D3); // D5, D6, D9-D12 pwm pins zijn vrij voor H-bridge. Overgebleven pins kunnen veranderd worden.
+//----Motoren----
+DigitalOut in1(D2);
+DigitalOut in2(D4);
+DigitalOut in3(D7);
+DigitalOut in4(D8);
+
+// DigitalOut ena(x); // Voor PWM
+
+//----RGB LEDS ----PWM pins
+PwmOut ledL_rood(D3);
+PwmOut ledL_groen(D5);
+PwmOut ledLF_rood(D6);
+PwmOut ledLF_groen(D9);
+PwmOut ledRF_rood(D10);
+PwmOut ledRF_groen(D11);
+PwmOut ledR_rood(A0);
+PwmOut ledR_groen(A1);
 
 void scanI2C()
 {
@@ -254,26 +97,46 @@ bool zwarte_lijn_detectie()
 void vooruitRijden()
 {
     printf("Rijdt vooruit\n");
+        in1 = 1;
+        in2 = 0;
+        in3 = 1;
+        in4 = 0;
 }
 
 void draaiLinks()
 {
     printf("draai links. Motor 1 uit of heel zacht(pwm) motor 2 volledig laten draaien\n");
+    in1 = 1;
+    in2 = 0;
+    in3 = 0;
+    in4 = 0;
 }
 
 void draaiRechts()
 {
     printf("draai rechts. Motor 2 uit of heel zacht(pwm) motor 1 volledig laten draaien\n");
+    in1 = 0;
+    in2 = 0;
+    in3 = 1;
+    in4 = 0;
 }
 
 void stopMotoren()
 {
     printf("Stop motoren\n");
+    in1 = 0;
+    in2 = 0;
+    in3 = 0;
+    in4 = 0;
 }
 
 void achteruitRijden()
 {
     printf("Rijdt achteruit\n");
+    in1 = 0;
+    in2 = 1;
+    in3 = 0;
+    in4 = 1;
 }
 
 Richting kiesRichting()
@@ -316,13 +179,14 @@ void handleAfgrond()
     thread_sleep_for(500);
 
     stopMotoren();
+    thread_sleep_for(500);
 
     voerRichtingUit(kiesRichting());
 }
 
 int main()
 {
-    printf("Starting VL53L0X sensors...\r\n");
+    printf("VL53L0X sensors initieren...\r\n");
 
     xshut1 = 0;
     xshut2 = 0;
@@ -391,31 +255,141 @@ int main()
         printf("Afstand Rechts-Voohr: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
         printf("Afstand Rects: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
 
-        if (obstakelDetectie(distL, distLF, distRF, distR))
-        {
-            Richting richting = kiesRichting();
-
-            if (richting == Links)
-            {
-                printf("Ga naar links\n");
-            }
-
-            if (richting == Rechts)
-            {
-                printf("Ga naar rechts\n");
-            }
-        }
-
         if (afgrond_detectie())
         {
             handleAfgrond();
         }
 
+        else if (obstakelDetectie(distL, distLF, distRF, distR))
+        {
+            if (distL < obstakelAfstand)
+            {
+                ledL_groen.write(1.0);
+                ledL_rood.write(0.5);
+            }
+            else if (distR < obstakelAfstand)
+            {
+                ledR_groen.write(1.0);
+                ledR_rood.write(0.5);
+            }
+            else if (distLF < obstakelAfstand || distRF < obstakelAfstand)
+            {
+                ledLF_groen.write(1.0);
+                ledLF_rood.write(0.5);
+                ledRF_groen.write(1.0);
+                ledRF_rood.write(0.5);
+            }
+
+            voerRichtingUit(kiesRichting());
+        }
+
+        else
+        {
+            ledL_groen.write(0.5);
+            ledL_rood.write(1.0);
+            ledLF_groen.write(0.5);
+            ledLF_rood.write(1.0);
+            ledRF_groen.write(0.5);
+            ledRF_rood.write(1.0);
+            ledR_groen.write(0.5);
+            ledR_rood.write(1.0);
+            vooruitRijden();
+        }
+
         if (sensorL.timeoutOccurred()||sensorLF.timeoutOccurred()||sensorRF.timeoutOccurred()||sensorR.timeoutOccurred())
         {
             printf("TIMEOUT!\r\n");
+            stopMotoren();
         }
-
         thread_sleep_for(500);
     }
 }
+
+// ----LED Test----
+
+// #include <mbed.h>
+// #include <VL53L0X.h>
+
+// PwmOut led1_rood(D3);
+// PwmOut led1_groen(D5);
+// PwmOut led2_rood(D6);
+// PwmOut led2_groen(D9);
+
+// AnalogIn potmeter(A0);
+
+
+// float value = 0;
+
+// int main()
+// {
+//     led1_rood.period_ms(1);
+//     led1_groen.period_ms(1);
+//     led2_rood.period_ms(1);
+//     led2_groen.period_ms(1);
+
+//     potmeter.set_reference_voltage(3.3f);
+
+//     led1_rood = true;
+//     led1_groen = true;
+//     led2_rood = true;
+//     led2_groen = true;
+
+
+//     while (true)
+//     {
+//         value = potmeter.read();
+
+//         // led1_rood.write(value);
+//         led1_groen.write(value);
+
+//         // led2_rood.write(value);
+//         led2_groen.write(value);
+//         printf("Value: %f\n", value);
+//         thread_sleep_for(500);
+//     }
+// }
+
+// #include "mbed.h"
+
+// // Pas de pinnen aan indien nodig
+// DigitalOut in1(D2);
+// DigitalOut in2(D3);
+// DigitalOut in3(D4);
+// DigitalOut in4(D5);
+// // DigitalOut ena(D5);
+
+// int main()
+// {
+//     // ena = true;
+
+//     while (true)
+//     {
+//         // Vooruit
+//         in1 = 1;
+//         in2 = 0;
+//         in3 = 1;
+//         in4 = 0;
+//         ThisThread::sleep_for(20s);
+
+//         // Stop
+//         in1 = 0;
+//         in2 = 0;
+//         in3 = 0;
+//         in4 = 0;
+//         ThisThread::sleep_for(1s);
+
+//         // Achteruit
+//         in1 = 0;
+//         in2 = 1;
+//         in3 = 0;
+//         in4 = 0;
+//         ThisThread::sleep_for(20s);
+
+//         // Stop
+//         in1 = 0;
+//         in2 = 0;
+//         in3 = 0;
+//         in4 = 0;
+//         ThisThread::sleep_for(1s);
+//     }
+// }
