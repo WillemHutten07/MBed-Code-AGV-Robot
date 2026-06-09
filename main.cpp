@@ -1,7 +1,9 @@
 #include <mbed.h>
 #include <VL53L0X.h>
+#include <string>
 
 I2C i2c(D14, D15);
+BufferedSerial bluetooth(PA_11, PA_12, 9600);
 Timer t1;
 
 int linksCounter = 0;
@@ -17,8 +19,8 @@ enum Richting
 //Reset pins op VL53L0X ToF sensor
 DigitalOut xshut1(PC_6);
 DigitalOut xshut2(PC_8);
-DigitalOut xshut3(PB_1);
-DigitalOut xshut4(PC_0);
+DigitalOut xshut3(PC_5);
+DigitalOut xshut4(PC_9);
 
 // Default en nieuwe address
 #define DEFAULT_ADDR    0x29
@@ -38,13 +40,13 @@ VL53L0X sensorR(i2c, t1);
 
 // ---- IR-sensoren afgrond ----
 DigitalIn ir1(D12);
-DigitalIn ir2(D13);
+DigitalIn ir2(PC_10);
 DigitalIn ir3(A2);
-DigitalIn ir4(A3);
+DigitalIn ir4(A4);
 
 // ---- IR-sensoren zwarte lijn ----
-DigitalIn ir5(A4);
-DigitalIn ir6(A5);
+DigitalIn ir5(PB_1);
+DigitalIn ir6(PB_2);
 
 //----Motoren----
 DigitalOut in1(D2);
@@ -58,11 +60,11 @@ DigitalOut in4(D8);
 PwmOut ledL_rood(D3);
 PwmOut ledL_groen(D5);
 PwmOut ledLF_rood(D6);
-PwmOut ledLF_groen(D9);
-PwmOut ledRF_rood(D10);
-PwmOut ledRF_groen(D11);
-PwmOut ledR_rood(A0);
-PwmOut ledR_groen(A1);
+PwmOut ledLF_groen(D10);
+PwmOut ledRF_rood(D11);
+PwmOut ledRF_groen(A0);
+PwmOut ledR_rood(A1);
+PwmOut ledR_groen(A3);
 
 void scanI2C()
 {
@@ -242,6 +244,13 @@ int main()
     // Step 5: scan I2C bus (should show new address)
     scanI2C();
 
+    char c;
+    string received = "";
+    Timer stringtimer;
+    stringtimer.start();
+
+    printf("Bluetooth HC-05 Ready\r\n");
+
     // Step 6: test reading from new address
     while (1)
     {
@@ -296,12 +305,61 @@ int main()
             vooruitRijden();
         }
 
+        if (bluetooth.readable())
+        {
+            if (bluetooth.read(&c, 1) == 1)
+            {
+                bluetooth.write(&c, 1);
+                received += c;
+                stringtimer.reset();  // reset timer on every new character
+            }
+        }
+
+        // If we have data and no new characters for 50ms, process it
+        if (received.length() > 0 && stringtimer.elapsed_time() > 50ms)
+        {
+            printf("Got: %s\r\n", received.c_str());
+
+            if (received == "a")
+            {
+                printf("AGV Aan\r\n");
+            }
+            else if (received == "u")
+            {
+                printf("AGV Uit\r\n");
+            }
+            else if (received == "v")
+            {
+                printf("Vooruit\r\n");
+            }
+            else if (received == "l")
+            {
+                printf("Naar Links\r\n");
+            }
+            else if (received == "r")
+            {
+                printf("Naar Rechts\r\n");
+            }
+            else if (received == "s")
+            {
+                printf("Achteruit\r\n");
+            }
+            else if (received.substr(0, 4) == "LED_")
+            {
+                int value = stoi(received.substr(4));
+                float brightness = value / 10.0f;
+                printf("Value: %.2f\r\n", brightness);
+            }
+
+            received = "";  // clear for next message
+        }    
+
         if (sensorL.timeoutOccurred()||sensorLF.timeoutOccurred()||sensorRF.timeoutOccurred()||sensorR.timeoutOccurred())
         {
             printf("TIMEOUT!\r\n");
             stopMotoren();
         }
-        thread_sleep_for(500);
+        thread_sleep_for(3000);
     }
 }
 
@@ -391,5 +449,125 @@ int main()
 //         in3 = 0;
 //         in4 = 0;
 //         ThisThread::sleep_for(1s);
+//     }
+// }
+// #include <mbed.h>
+// #include <VL53L0X.h>
+
+// I2C i2c(D14, D15);
+// Timer t1;
+
+// VL53L0X sensorL(i2c, t1);
+// VL53L0X sensorLF(i2c, t1);
+// VL53L0X sensorRF(i2c, t1);
+// VL53L0X sensorR(i2c, t1);
+
+// #define DEFAULT_ADDR    0x29
+// #define SENSORL_ADDR    0x30
+// #define SENSORLF_ADDR   0x31
+// #define SENSORRF_ADDR   0x32
+// #define SENSORR_ADDR    0x33
+
+// // #define HIGH_ACCURACY
+// #define LONG_RANGE
+
+// DigitalOut xshut1(PC_6);
+// DigitalOut xshut2(PC_8);
+// DigitalOut xshut3(D4);
+// DigitalOut xshut4(D5);
+
+
+// int main()
+// {
+//     printf("initieren\n");
+//     xshut1 = 1;
+//     thread_sleep_for(10);
+//     sensorL.init();
+//     sensorL.setTimeout(500);
+//     sensorL.setAddress(SENSORL_ADDR);
+//     printf("Initieren gereed\n");
+
+//     while (1)
+//     {
+//         uint16_t distL = sensorL.readRangeSingleMillimeters();
+//         // uint16_t distLF = sensorLF.readRangeSingleMillimeters();
+//         // uint16_t distRF = sensorRF.readRangeSingleMillimeters();
+//         // uint16_t distR = sensorR.readRangeSingleMillimeters();
+
+//         printf("Afstand Links: %u mm @ address 0x%02X\r\n", distL, SENSORL_ADDR);
+//         // printf("Afstand Links-Voor: %u mm @ address 0x%02X\r\n", distLF, SENSORLF_ADDR);
+//         // printf("Afstand Rechts-Voohr: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
+//         // printf("Afstand Rects: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
+//         thread_sleep_for(500);
+//     }
+// }
+
+// #include "mbed.h"
+// #include <string>
+
+// BufferedSerial bluetooth(PA_11, PA_12, 9600);
+// DigitalOut led(LED1);
+
+// int main()
+// {
+//     char c;
+//     string received = "";
+//     Timer stringtimer;
+//     stringtimer.start();
+
+//     printf("Bluetooth HC-05 Ready\r\n");
+
+//     while (true)
+//     {
+//         if (bluetooth.readable())
+//         {
+//             if (bluetooth.read(&c, 1) == 1)
+//             {
+//                 bluetooth.write(&c, 1);
+//                 received += c;
+//                 stringtimer.reset();  // reset timer on every new character
+//             }
+//         }
+
+//         // If we have data and no new characters for 50ms, process it
+//         if (received.length() > 0 && stringtimer.elapsed_time() > 50ms)
+//         {
+//             printf("Got: %s\r\n", received.c_str());
+
+//             if (received == "a")
+//             {
+//                 led = 1;
+//                 printf("AGV Aan\r\n");
+//             }
+//             else if (received == "u")
+//             {
+//                 led = 0;
+//                 printf("AGV Uit\r\n");
+//             }
+//             else if (received == "v")
+//             {
+//                 printf("Vooruit\r\n");
+//             }
+//             else if (received == "l")
+//             {
+//                 printf("Naar Links\r\n");
+//             }
+//             else if (received == "r")
+//             {
+//                 printf("Naar Rechts\r\n");
+//             }
+//             else if (received == "s")
+//             {
+//                 printf("Achteruit\r\n");
+//             }
+//             else if (received.substr(0, 4) == "LED_")
+//             {
+//                 int value = stoi(received.substr(4));
+//                 float brightness = value / 10.0f;
+//                 printf("Value: %.2f\r\n", brightness);
+//             }
+
+//             received = "";  // clear for next message
+//         }
 //     }
 // }
