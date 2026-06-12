@@ -8,7 +8,8 @@ Timer t1;
 
 int linksCounter = 0;
 int rechtsCounter = 0;
-uint16_t obstakelAfstand = 200; //200 mm
+uint16_t obstakelAfstand = 300; //200 mm
+float brightness = 0.5;
 
 enum Richting
 {
@@ -39,14 +40,14 @@ VL53L0X sensorRF(i2c, t1);
 VL53L0X sensorR(i2c, t1);
 
 // ---- IR-sensoren afgrond ----
-DigitalIn ir1(D12);
-DigitalIn ir2(PC_10);
-DigitalIn ir3(A2);
-DigitalIn ir4(A4);
+DigitalIn ir1(D12, PullDown); // L
+DigitalIn ir2(PC_10, PullDown); // LF
+DigitalIn ir3(A2, PullDown);  // RF
+DigitalIn ir4(A4, PullDown); // R
 
 // ---- IR-sensoren zwarte lijn ----
-DigitalIn ir5(PB_1);
-DigitalIn ir6(PB_2);
+DigitalIn ir5(PB_1, PullDown); // LF
+DigitalIn ir6(PB_2, PullDown); // RF
 
 //----Motoren----
 DigitalOut in1(D2);
@@ -57,14 +58,14 @@ DigitalOut in4(D8);
 // DigitalOut ena(x); // Voor PWM
 
 //----RGB LEDS ----PWM pins
-PwmOut ledL_rood(D3);
-PwmOut ledL_groen(D5);
-PwmOut ledLF_rood(D6);
-PwmOut ledLF_groen(D10);
-PwmOut ledRF_rood(D11);
-PwmOut ledRF_groen(A0);
-PwmOut ledR_rood(A1);
-PwmOut ledR_groen(A3);
+PwmOut ledL_rood(D3); // D3
+PwmOut ledL_groen(D5); // D5
+PwmOut ledLF_rood(D6); // D6
+PwmOut ledLF_groen(D10); // D10F
+PwmOut ledRF_rood(D11); // D11
+PwmOut ledRF_groen(A0); // A0
+PwmOut ledR_rood(A1); // A1
+PwmOut ledR_groen(A3); // A3
 
 void scanI2C()
 {
@@ -99,25 +100,25 @@ bool zwarte_lijn_detectie()
 void vooruitRijden()
 {
     printf("Rijdt vooruit\n");
-        in1 = 1;
-        in2 = 0;
-        in3 = 1;
-        in4 = 0;
+        in1 = 0; // Achteruit
+        in2 = 1; // Vooruit L
+        in3 = 1; // Vooruit R
+        in4 = 0; // Achteruit
 }
 
 void draaiLinks()
 {
     printf("draai links. Motor 1 uit of heel zacht(pwm) motor 2 volledig laten draaien\n");
-    in1 = 1;
-    in2 = 0;
+    in1 = 0;
+    in2 = 1;
     in3 = 0;
-    in4 = 0;
+    in4 = 1;
 }
 
 void draaiRechts()
 {
     printf("draai rechts. Motor 2 uit of heel zacht(pwm) motor 1 volledig laten draaien\n");
-    in1 = 0;
+    in1 = 1;
     in2 = 0;
     in3 = 1;
     in4 = 0;
@@ -135,8 +136,8 @@ void stopMotoren()
 void achteruitRijden()
 {
     printf("Rijdt achteruit\n");
-    in1 = 0;
-    in2 = 1;
+    in1 = 1;
+    in2 = 0;
     in3 = 0;
     in4 = 1;
 }
@@ -177,14 +178,20 @@ void voerRichtingUit(Richting richting)
 void handleAfgrond()
 {
     stopMotoren();
+    thread_sleep_for(100);
     achteruitRijden();
-    thread_sleep_for(500);
+    thread_sleep_for(5000);
 
     stopMotoren();
     thread_sleep_for(500);
 
     voerRichtingUit(kiesRichting());
 }
+
+  bool sensor_L = false;
+  bool sensor_LF = false;
+  bool sensor_RF = false;
+  bool sensor_R = false;
 
 int main()
 {
@@ -205,43 +212,76 @@ int main()
     ledR_groen.period_ms(1);
     
     thread_sleep_for(50);
+    printf("Beginnen met sensor 1: \r\n");
 
     // Sensor Links
     xshut1 = 1;
     thread_sleep_for(10);
-    sensorL.init();
+    printf("X-shut 1 veranderd\r\n");
+  
+
+    if (sensorL.init())
+    {
+    sensor_L = true;
     sensorL.setTimeout(500);
     sensorL.setAddress(SENSORL_ADDR);
+    printf("Address sensor Links changed to 0x%02X\r\n", SENSORL_ADDR);
+    }
+    else if (!sensor_L)
+    {
+        printf("Kon linker sensor niet initieren\n");
+    }
     
     // Sensor links-voor
     xshut2 = 1;
     thread_sleep_for(10);
-    sensorLF.init();
+    
+    if (sensorLF.init())
+    {
+    sensor_LF = true;
     sensorLF.setTimeout(500);
     sensorLF.setAddress(SENSORLF_ADDR);
+    printf("Address sensor Links-voor changed to 0x%02X\r\n", SENSORLF_ADDR);
+    }
+    else if (!sensor_LF) 
+    {
+    printf("Kon sensor Links-voor niet initieren\n");
+    }
 
     // Sensor Rechts-voor
     xshut3 = 1;
     thread_sleep_for(10);
-    sensorRF.init();
+
+    if (sensorRF.init())
+    {
+    sensor_RF = true;
     sensorRF.setTimeout(500);
     sensorRF.setAddress(SENSORRF_ADDR);
     thread_sleep_for(10);
+    printf("Address sensor Rechts changed to 0x%02X\r\n", SENSORRF_ADDR);
+    }
+    else if (!sensor_RF)
+    {
+    printf("Kon sensor Rechts-voor niet initieren\n");
+    }
 
-    // Sensor rechts
+    // // Sensor rechts
     xshut4 = 1;
     thread_sleep_for(10);
-    sensorR.init();
+
+    if (sensorR.init())
+    {
+    sensor_R = true;
     sensorR.setTimeout(500);
     sensorR.setAddress(SENSORR_ADDR);
     thread_sleep_for(10);
-
-    printf("Address sensor Links changed to 0x%02X\r\n", SENSORL_ADDR);
-    printf("Address sensor Links-voor changed to 0x%02X\r\n", SENSORLF_ADDR);
-    printf("Address sensor Rechts changed to 0x%02X\r\n", SENSORRF_ADDR);
     printf("Address sensor Rechts-voor changed to 0x%02X\r\n", SENSORR_ADDR);
+    }
+    else if(!sensor_R) 
+    {
+    printf("kon sensor Rechts niet initieren\n");
+    }
 
-    // Step 5: scan I2C bus (should show new address)
     scanI2C();
 
     char c;
@@ -251,56 +291,73 @@ int main()
 
     printf("Bluetooth HC-05 Ready\r\n");
 
-    // Step 6: test reading from new address
     while (1)
     {
+        ledL_groen.write(brightness);
+        ledLF_groen.write(brightness);
+        ledRF_groen.write(brightness);
+        ledR_groen.write(brightness);
+        
+        ledL_rood.write(1.0);
+        ledLF_rood.write(1.0);
+        ledRF_rood.write(1.0);
+        ledR_rood.write(1.0);
+
         uint16_t distL = sensorL.readRangeSingleMillimeters();
         uint16_t distLF = sensorLF.readRangeSingleMillimeters();
         uint16_t distRF = sensorRF.readRangeSingleMillimeters();
         uint16_t distR = sensorR.readRangeSingleMillimeters();
 
-        printf("Afstand Links: %u mm @ address 0x%02X\r\n", distL, SENSORL_ADDR);
-        printf("Afstand Links-Voor: %u mm @ address 0x%02X\r\n", distLF, SENSORLF_ADDR);
-        printf("Afstand Rechts-Voohr: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
-        printf("Afstand Rects: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
+        // printf("Afstand Links: %u mm @ address 0x%02X\r\n", distL, SENSORL_ADDR);
+        // printf("Afstand Links-Voor: %u mm @ address 0x%02X\r\n", distLF, SENSORLF_ADDR);
+        // printf("Afstand Rechts-Voohr: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
+        // printf("Afstand Rects: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
+        printf("Afstand Links: %u mm Links-Voor: %u mm Rechts-voor: %u mm Rechts: %u mm \r\n", distL, distLF, distRF, distR);
 
-        if (afgrond_detectie())
-        {
-            handleAfgrond();
-        }
+        // if (afgrond_detectie())
+        // {
+        //     handleAfgrond();
+        // }
 
-        else if (obstakelDetectie(distL, distLF, distRF, distR))
+        if (obstakelDetectie(distL, distLF, distRF, distR))
         {
             if (distL < obstakelAfstand)
             {
                 ledL_groen.write(1.0);
-                ledL_rood.write(0.5);
+                ledL_rood.write(brightness);
             }
-            else if (distR < obstakelAfstand)
+            if (distR < obstakelAfstand)
             {
                 ledR_groen.write(1.0);
-                ledR_rood.write(0.5);
+                ledR_rood.write(brightness);
             }
-            else if (distLF < obstakelAfstand || distRF < obstakelAfstand)
+            if (distLF < obstakelAfstand || distRF < obstakelAfstand)
             {
                 ledLF_groen.write(1.0);
-                ledLF_rood.write(0.5);
+                ledLF_rood.write(brightness);
                 ledRF_groen.write(1.0);
-                ledRF_rood.write(0.5);
+                ledRF_rood.write(brightness);
             }
 
-            voerRichtingUit(kiesRichting());
+            // voerRichtingUit(kiesRichting());
+            Richting richting = kiesRichting();
+
+            while (obstakelDetectie(sensorL.readRangeSingleMillimeters(), sensorLF.readRangeSingleMillimeters(), sensorRF.readRangeSingleMillimeters(), sensorR.readRangeSingleMillimeters()))
+            {
+            voerRichtingUit(richting);
+            thread_sleep_for(10);
+            }
         }
 
         else
         {
-            ledL_groen.write(0.5);
+            ledL_groen.write(brightness);
             ledL_rood.write(1.0);
-            ledLF_groen.write(0.5);
+            ledLF_groen.write(brightness);
             ledLF_rood.write(1.0);
-            ledRF_groen.write(0.5);
+            ledRF_groen.write(brightness);
             ledRF_rood.write(1.0);
-            ledR_groen.write(0.5);
+            ledR_groen.write(brightness);
             ledR_rood.write(1.0);
             vooruitRijden();
         }
@@ -331,23 +388,35 @@ int main()
             else if (received == "v")
             {
                 printf("Vooruit\r\n");
+                vooruitRijden();
+                thread_sleep_for(1000);
+                stopMotoren();
             }
             else if (received == "l")
             {
                 printf("Naar Links\r\n");
+                draaiLinks();
+                thread_sleep_for(1000);
+                stopMotoren();
             }
             else if (received == "r")
             {
                 printf("Naar Rechts\r\n");
+                draaiRechts();
+                thread_sleep_for(1000);
+                stopMotoren();
             }
             else if (received == "s")
             {
                 printf("Achteruit\r\n");
+                achteruitRijden();
+                thread_sleep_for(1000);
+                stopMotoren();
             }
             else if (received.substr(0, 4) == "LED_")
             {
                 int value = stoi(received.substr(4));
-                float brightness = value / 10.0f;
+                brightness = value / 10.0f;
                 printf("Value: %.2f\r\n", brightness);
             }
 
@@ -359,7 +428,7 @@ int main()
             printf("TIMEOUT!\r\n");
             stopMotoren();
         }
-        thread_sleep_for(3000);
+        thread_sleep_for(10);
     }
 }
 
@@ -395,14 +464,17 @@ int main()
 
 //     while (true)
 //     {
-//         value = potmeter.read();
+//         // value = potmeter.read();
 
 //         // led1_rood.write(value);
-//         led1_groen.write(value);
+//         led1_groen.write(1.0);
+//         led1_rood.write(0.0);
+//         printf("Zou nu rood moeten zijn\n");
+//         thread_sleep_for(3000);
 
-//         // led2_rood.write(value);
-//         led2_groen.write(value);
-//         printf("Value: %f\n", value);
+//         led1_rood.write(1.0);
+//         led1_groen.write(0.0);
+//         printf("Zou nu groen moeten zijn\n");
 //         thread_sleep_for(500);
 //     }
 // }
@@ -411,9 +483,9 @@ int main()
 
 // // Pas de pinnen aan indien nodig
 // DigitalOut in1(D2);
-// DigitalOut in2(D3);
-// DigitalOut in3(D4);
-// DigitalOut in4(D5);
+// DigitalOut in2(D4);
+// DigitalOut in3(D7);
+// DigitalOut in4(D8);
 // // DigitalOut ena(D5);
 
 // int main()
@@ -471,33 +543,64 @@ int main()
 // // #define HIGH_ACCURACY
 // #define LONG_RANGE
 
-// DigitalOut xshut1(PC_6);
-// DigitalOut xshut2(PC_8);
-// DigitalOut xshut3(D4);
-// DigitalOut xshut4(D5);
+// DigitalOut xshut1(D3);
+// DigitalOut xshut2(D4);
+// DigitalOut xshut3(D5);
+// DigitalOut xshut4(D6);
 
 
 // int main()
 // {
+//     xshut1 = 0;
+//     xshut2 = 0;
+//     xshut3 = 0;
+//     xshut4 = 0;
+
 //     printf("initieren\n");
 //     xshut1 = 1;
-//     thread_sleep_for(10);
+//     thread_sleep_for(100);
 //     sensorL.init();
 //     sensorL.setTimeout(500);
 //     sensorL.setAddress(SENSORL_ADDR);
-//     printf("Initieren gereed\n");
+//     printf("Initieren sensor1 gereed\n");
+
+//     thread_sleep_for(100);
+//     xshut2 = 1;
+//     thread_sleep_for(100);
+//     sensorLF.init();
+//     sensorLF.setTimeout(500);
+//     sensorLF.setAddress(SENSORLF_ADDR);
+//     printf("Initieren sensor2 gereed\n");
+    
+//     thread_sleep_for(100);
+//     xshut3 = 1;
+//     thread_sleep_for(100);
+//     sensorRF.init();
+//     sensorRF.setTimeout(500);
+//     sensorRF.setAddress(SENSORRF_ADDR);
+//     printf("Initieren sensor3 gereed\n");
+
+//     thread_sleep_for(100);
+//     xshut4 = 1;
+//     thread_sleep_for(100);
+//     sensorR.init();
+//     sensorR.setTimeout(500);
+//     sensorR.setAddress(SENSORR_ADDR);
+//     printf("Initieren sensor4 gereed\n");
+
+//     thread_sleep_for(100);
 
 //     while (1)
 //     {
 //         uint16_t distL = sensorL.readRangeSingleMillimeters();
-//         // uint16_t distLF = sensorLF.readRangeSingleMillimeters();
-//         // uint16_t distRF = sensorRF.readRangeSingleMillimeters();
-//         // uint16_t distR = sensorR.readRangeSingleMillimeters();
+//         uint16_t distLF = sensorLF.readRangeSingleMillimeters();
+//         uint16_t distRF = sensorRF.readRangeSingleMillimeters();
+//         uint16_t distR = sensorR.readRangeSingleMillimeters();
 
 //         printf("Afstand Links: %u mm @ address 0x%02X\r\n", distL, SENSORL_ADDR);
-//         // printf("Afstand Links-Voor: %u mm @ address 0x%02X\r\n", distLF, SENSORLF_ADDR);
-//         // printf("Afstand Rechts-Voohr: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
-//         // printf("Afstand Rects: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
+//         printf("Afstand Links-Voor: %u mm @ address 0x%02X\r\n", distLF, SENSORLF_ADDR);
+//         printf("Afstand Rechts-Voor: %u mm @ address 0x%02X\r\n", distRF, SENSORRF_ADDR);
+//         printf("Afstand Rechts: %u mm @ address 0x%02X\r\n", distR, SENSORR_ADDR);
 //         thread_sleep_for(500);
 //     }
 // }
@@ -569,5 +672,38 @@ int main()
 
 //             received = "";  // clear for next message
 //         }
+//     }
+// }
+
+// ----IR Test ----
+// #include <mbed.h>
+
+// DigitalIn ir1(D12, PullDown); // L
+// DigitalIn ir2(PC_10, PullDown); // LF
+// DigitalIn ir3(PC_11, PullDown);  // RF
+// DigitalIn ir4(A4, PullDown); // R
+
+// // ---- IR-sensoren zwarte lijn ----
+// DigitalIn ir5(PB_1); // LF
+// DigitalIn ir6(PB_2); // RF
+
+// int main()
+// {
+//     while (true)
+//     {
+//     int afgrondL = ir1.read();
+//     int afgrondLF = ir2.read();
+//     int afgrondRF= ir3.read();
+//     int afgrondR = ir4.read();
+//     int zwartelijn1= ir5.read();
+//     int zwartelijn2 = ir6.read();
+
+//     printf("Afgrond L: %d\n", afgrondL);
+//     printf("Afgrond LF: %d\n", afgrondLF);
+//     printf("Afgrond RF: %d\n", afgrondRF);
+//     printf("Afgrond R: %d\n", afgrondR);
+//     // printf("zwarte lijn 1: %d\n", zwartelijn1);
+//     // printf("zwarte lijn 2: %d\n", zwartelijn2);
+//     thread_sleep_for(500);
 //     }
 // }
