@@ -1,3 +1,4 @@
 Code Voor AGV Robot.
 
-V0.1
+V1.0
+
