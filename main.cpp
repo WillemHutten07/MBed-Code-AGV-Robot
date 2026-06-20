@@ -721,6 +721,8 @@ int linksCounter = 0;
 int rechtsCounter = 0;
 uint16_t obstakelAfstand = 300; //200 mm
 float brightness = 0.5;
+Timer zwartTimer;
+bool zwarte_lijn_cooldown = false;
 
 enum Richting
 {
@@ -794,12 +796,12 @@ void knop_ingedrukt()
 
 void scanI2C()
 {
-    printf("Scanning I2C...\r\n");
+    printf("I2C Scannen...\r\n");
     for (int addr = 1; addr < 127; addr++)
     {
         if (!i2c.write(addr << 1, nullptr, 0))
         {
-            printf("Device found at 0x%02X\r\n", addr);
+            printf("Sensor gevonden: 0x%02X\r\n", addr);
         }
     }
 }
@@ -824,16 +826,25 @@ bool zwarte_lijn_detectie()
 
 void vooruitRijden()
 {
-    printf("Rijdt vooruit\n");
+    // printf("Rijdt vooruit\n");
         in1 = 0; // Achteruit
         in2 = 1; // Vooruit L
         in3 = 1; // Vooruit R
         in4 = 0; // Achteruit
 }
 
+void achteruitRijden()
+{
+    // printf("Rijdt achteruit\n");
+        in1 = 1; // Achteruit
+        in2 = 0; // Vooruit L
+        in3 = 0; // Vooruit R
+        in4 = 1; // Achteruit
+}
+
 void draaiLinks()
 {
-    printf("draai links. Motor 1 uit of heel zacht(pwm) motor 2 volledig laten draaien\n");
+    // printf("draai links. Motor 1 achteruit motor 2 vooruit\n");
     in1 = 0;
     in2 = 1;
     in3 = 0;
@@ -842,7 +853,7 @@ void draaiLinks()
 
 void draaiRechts()
 {
-    printf("draai rechts. Motor 2 uit of heel zacht(pwm) motor 1 volledig laten draaien\n");
+    // printf("draai rechts. Motor 2 achteruit motor 1 vooruit\n");
     in1 = 1;
     in2 = 0;
     in3 = 1;
@@ -851,20 +862,11 @@ void draaiRechts()
 
 void stopMotoren()
 {
-    printf("Stop motoren\n");
+    // printf("Stop motoren\n");
     in1 = 0;
     in2 = 0;
     in3 = 0;
     in4 = 0;
-}
-
-void achteruitRijden()
-{
-    printf("Rijdt achteruit\n");
-    in1 = 1;
-    in2 = 0;
-    in3 = 0;
-    in4 = 1;
 }
 
 Richting kiesRichting()
@@ -950,7 +952,8 @@ void updateLEDs(uint16_t distL, uint16_t distLF, uint16_t distRF, uint16_t distR
       Achteruit_Rijden,
       Stoppen,
       Draai_Links,
-      Draai_Rechts
+      Draai_Rechts,
+      Omdraaien
   };
 
 agvState state = Vooruit_Rijden;
@@ -993,7 +996,7 @@ int main()
     else if (!sensor_L)
     {
         printf("Kon linker sensor niet initieren\n");
-    }
+    }   
     
     // Sensor links-voor
     xshut2 = 1;
@@ -1055,6 +1058,7 @@ int main()
     printf("Bluetooth HC-05 Ready\r\n");
 
     stateTimer.start();
+    zwartTimer.start();
     debounce.start();
     t1_knop.rise(&knop_ingedrukt);
 
@@ -1064,6 +1068,8 @@ int main()
         if (!agv_aan)
         {
             stopMotoren();
+            linksCounter = 0;  // Counters resetten
+            rechtsCounter = 0; // Counters resetten
             state = Vooruit_Rijden;
             stateTimer.reset();
             continue;
@@ -1145,6 +1151,12 @@ int main()
 
             // printf("Afstand Links: %u mm Links-Voor: %u mm Rechts-voor: %u mm Rechts: %u mm \r\n", distL, distLF, distRF, distR);
 
+            bool zwart = zwarte_lijn_detectie();
+
+            if (zwarte_lijn_cooldown && zwartTimer.elapsed_time() > 10s)
+            {
+                zwarte_lijn_cooldown = false;
+            }
 
             switch (state) 
             {
@@ -1167,12 +1179,24 @@ int main()
                     if (richting == Links)
                     {
                         state = Draai_Links;
+                        stateTimer.reset();
                     }
 
                     else if (richting == Rechts)
                     {
                         state = Draai_Rechts;
+                        stateTimer.reset();
                     }
+                }
+
+// Om ervoor te zorgen dat de agv niet eindeloos rondjes draait bij zwartelijn detectie
+                else if (!zwarte_lijn_cooldown && zwart)
+                {
+                    state = Omdraaien;
+                    stateTimer.reset();
+
+                    zwartTimer.reset();
+                    zwarte_lijn_cooldown = true;
                 }
 
                 break;
@@ -1185,8 +1209,8 @@ int main()
                 {
                     if (afgrond_detectie())
                     {
-                        stateTimer.reset();
                         state = Achteruit_Rijden;
+                        stateTimer.reset();
                     }
                     else
                     {
@@ -1194,14 +1218,14 @@ int main()
 
                         if (richting == Links)
                         {
-                            stateTimer.reset();
                             state = Draai_Links;
+                            stateTimer.reset();
                         }
 
                         else if (richting == Rechts)
                         {
-                            stateTimer.reset();
                             state = Draai_Rechts;
+                            stateTimer.reset();
                         }
                     }
                 }
@@ -1233,17 +1257,18 @@ int main()
                     ledRF_rood.write(1.0);
                     ledR_groen.write(brightness);
                     ledR_rood.write(1.0);
-                    stateTimer.reset();
 
                     Richting richting = kiesRichting();
                     if (richting == Links)
                     {
                         state = Draai_Links;
+                        stateTimer.reset();
                     }
 
                     else if (richting == Rechts)
                     {
                         state = Draai_Rechts;
+                        stateTimer.reset();
                     }
                 }
 
@@ -1258,6 +1283,7 @@ int main()
                 if (!obstakelDetectie(distL, distLF, distRF, distR))
                 {
                     state = Vooruit_Rijden;
+                    stateTimer.reset();
                 }
                 break;
 
@@ -1270,8 +1296,23 @@ int main()
                 if (!obstakelDetectie(distL, distLF, distRF, distR))
                 {
                     state = Vooruit_Rijden;
+                    stateTimer.reset();
                 }
                 break;
+
+            case Omdraaien:
+
+                draaiRechts();
+
+                if (stateTimer.elapsed_time() >= 3000ms) // Benodigde tijd voor de AGV om 180 graden te draaien
+                {
+
+                    zwarte_lijn_cooldown = true;
+                    zwartTimer.reset();
+
+                    state = Vooruit_Rijden;
+                    stateTimer.reset();
+                }
             }
         }
 
