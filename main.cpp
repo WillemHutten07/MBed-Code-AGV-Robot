@@ -953,6 +953,8 @@ void updateLEDs(uint16_t distL, uint16_t distLF, uint16_t distRF, uint16_t distR
       Stoppen,
       Draai_Links,
       Draai_Rechts,
+      Draai_Links_Afgrond,
+      Draai_Rechts_Afgrond,
       Omdraaien
   };
 
@@ -1261,13 +1263,13 @@ int main()
                     Richting richting = kiesRichting();
                     if (richting == Links)
                     {
-                        state = Draai_Links;
+                        state = Draai_Links_Afgrond;
                         stateTimer.reset();
                     }
 
                     else if (richting == Rechts)
                     {
-                        state = Draai_Rechts;
+                        state = Draai_Rechts_Afgrond;
                         stateTimer.reset();
                     }
                 }
@@ -1298,6 +1300,30 @@ int main()
                     state = Vooruit_Rijden;
                     stateTimer.reset();
                 }
+                break;
+
+            case Draai_Links_Afgrond:
+
+                draaiLinks();
+
+                if (stateTimer.elapsed_time() >= 1500ms)
+                {
+                    state = Vooruit_Rijden;
+                    stateTimer.reset();
+                }
+
+                break;
+
+            case Draai_Rechts_Afgrond:
+
+                draaiRechts();
+
+                if (stateTimer.elapsed_time() >= 1500ms)
+                {
+                    state = Vooruit_Rijden;
+                    stateTimer.reset();
+                }
+
                 break;
 
             case Omdraaien:
