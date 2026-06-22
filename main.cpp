@@ -695,8 +695,8 @@
 //     int afgrondLF = ir2.read();
 //     int afgrondRF= ir3.read();
 //     int afgrondR = ir4.read();
-//     int zwartelijn1= ir5.read();
-//     int zwartelijn2 = ir6.read();
+//     // int zwartelijn1= ir5.read();
+//     // int zwartelijn2 = ir6.read();
 
 //     printf("Afgrond L: %d\n", afgrondL);
 //     printf("Afgrond LF: %d\n", afgrondLF);
@@ -707,6 +707,10 @@
 //     thread_sleep_for(500);
 //     }
 // }
+
+
+//--------EINDCODE--------
+
 
 #include <cstdint>
 #include <mbed.h>
@@ -719,7 +723,7 @@ Timer t1;
 
 int linksCounter = 0;
 int rechtsCounter = 0;
-uint16_t obstakelAfstand = 300; //200 mm
+uint16_t obstakelAfstand = 350; //200 mm
 float brightness = 0.5;
 Timer zwartTimer;
 bool zwarte_lijn_cooldown = false;
@@ -755,7 +759,7 @@ VL53L0X sensorR(i2c, t1);
 // ---- IR-sensoren afgrond ----
 DigitalIn ir1(D12, PullDown); // L
 DigitalIn ir2(PC_10, PullDown); // LF
-DigitalIn ir3(A2, PullDown);  // RF
+DigitalIn ir3(PC_11, PullDown);  // RF
 DigitalIn ir4(A4, PullDown); // R
 
 // ---- IR-sensoren zwarte lijn ----
@@ -771,7 +775,7 @@ DigitalOut in4(D8);
 // DigitalOut ena(x); // Voor PWM
 
 //----RGB LEDS----PWM pins
-PwmOut ledL_rood(D3); // D3
+PwmOut ledL_rood(D9); // D3
 PwmOut ledL_groen(D5); // D5
 PwmOut ledLF_rood(D6); // D6
 PwmOut ledLF_groen(D10); // D10F
@@ -781,7 +785,7 @@ PwmOut ledR_rood(A1); // A1
 PwmOut ledR_groen(A3); // A3
 
 //----Aan/Uit knop----
-InterruptIn t1_knop(D9); //Pull-down knop
+InterruptIn t1_knop(D3); //Pull-down knop
 bool agv_aan = false;
 Timer debounce;
 bool gestart = false;
@@ -1067,15 +1071,7 @@ int main()
 
     while (true)
     {   
-        if (!agv_aan)
-        {
-            stopMotoren();
-            linksCounter = 0;  // Counters resetten
-            rechtsCounter = 0; // Counters resetten
-            state = Vooruit_Rijden;
-            stateTimer.reset();
-            continue;
-        }
+
 
         if (bluetooth.readable())
         {
@@ -1134,17 +1130,27 @@ int main()
             received = ""; 
         }
 
+        if (!agv_aan)
+        {
+            stopMotoren();
+            linksCounter = 0;  // Counters resetten
+            rechtsCounter = 0; // Counters resetten
+            state = Vooruit_Rijden;
+            stateTimer.reset();
+            continue;
+        }
+
         if (agv_aan == true)
         {
-            ledL_groen.write(brightness);
-            ledLF_groen.write(brightness);
-            ledRF_groen.write(brightness);
-            ledR_groen.write(brightness);
+            // ledL_groen.write(brightness);
+            // ledLF_groen.write(brightness);
+            // ledRF_groen.write(brightness);
+            // ledR_groen.write(brightness);
             
-            ledL_rood.write(1.0);
-            ledLF_rood.write(1.0);
-            ledRF_rood.write(1.0);
-            ledR_rood.write(1.0);
+            // ledL_rood.write(1.0);
+            // ledLF_rood.write(1.0);
+            // ledRF_rood.write(1.0);
+            // ledR_rood.write(1.0);
 
             uint16_t distL = sensorL.readRangeSingleMillimeters();
             uint16_t distLF = sensorLF.readRangeSingleMillimeters();
@@ -1306,7 +1312,7 @@ int main()
 
                 draaiLinks();
 
-                if (stateTimer.elapsed_time() >= 1500ms)
+                if (stateTimer.elapsed_time() >= 18000ms)
                 {
                     state = Vooruit_Rijden;
                     stateTimer.reset();
@@ -1318,7 +1324,7 @@ int main()
 
                 draaiRechts();
 
-                if (stateTimer.elapsed_time() >= 1500ms)
+                if (stateTimer.elapsed_time() >= 1800ms)
                 {
                     state = Vooruit_Rijden;
                     stateTimer.reset();
